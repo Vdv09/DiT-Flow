@@ -13,6 +13,8 @@ class DiffusionSchedule:
 
         self.alpha_cumprod_prev = torch.cat([torch.tensor([1.0]), self.alpha_cumprod[:-1]])
 
+        self.sqrt_inverse_alphas = torch.sqrt(1 / self.alphas)
+
         self.posterior_variances = (1 - self.alpha_cumprod_prev) / (1 - self.alpha_cumprod) * self.betas
 
         self._buffer_names = [
@@ -22,6 +24,7 @@ class DiffusionSchedule:
             'sqrt_alpha_cumprod',
             'sqrt_one_minus_alpha_cumprod',
             'alpha_cumprod_prev',
+            'sqrt_inverse_alphas',
             'posterior_variances',
         ]
     
