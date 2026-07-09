@@ -33,6 +33,17 @@ class DDPM:
 
         return mean_val + nonzero_mask * torch.sqrt(variance) * torch.randn_like(x_t)
     
+    @torch.no_grad()
+    def sample(self, model, image_shape, device, variance_type = "posterior"):
+        x = torch.randn(image_shape, device=device)
+        number_steps = self.schedule.number_steps
+
+        for i in range(number_steps - 1, -1, -1):
+            timesteps = torch.full((image_shape[0],), i, device=device, dtype=torch.long)
+            x = self.p_sample(model, x, timesteps, variance_type)
+        
+        return x
+    
     def training_loss(self, model, x_0, t):
         x_t, noise = self.q_sample(x_0, t)
 

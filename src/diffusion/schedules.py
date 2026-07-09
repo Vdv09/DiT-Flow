@@ -56,3 +56,7 @@ class DiffusionSchedule:
             setattr(self, name, buffer.to(device))
 
         return self
+    
+    @property
+    def number_steps(self):
+        return len(self.betas)
