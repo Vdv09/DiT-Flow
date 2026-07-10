@@ -5,6 +5,7 @@ class DiffusionSchedule:
     def __init__(self, betas):
         self.betas = betas
         self.alphas = 1 - self.betas
+        self.sqrt_one_minus_alphas = torch.sqrt(1 - self.alphas)
 
         self.alpha_cumprod = torch.cumprod(self.alphas, dim = 0)
         self.sqrt_alpha_cumprod = torch.sqrt(self.alpha_cumprod)
@@ -20,6 +21,7 @@ class DiffusionSchedule:
         self._buffer_names = [
             'betas',
             'alphas',
+            'sqrt_one_minus_alphas',
             'alpha_cumprod',
             'sqrt_alpha_cumprod',
             'sqrt_one_minus_alpha_cumprod',

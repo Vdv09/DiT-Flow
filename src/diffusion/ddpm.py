@@ -1,19 +1,8 @@
-from .schedules import DiffusionSchedule
+from .base import DiffusionBase
 import torch
-import torch.nn.functional as F
 
 
-class DDPM:
-    def __init__(self, schedule: DiffusionSchedule):
-        self.schedule = schedule
-    
-    def q_sample(self, x_0, t):
-        noise = torch.randn_like(x_0)
-
-        return self.schedule.get_data(self.schedule.sqrt_alpha_cumprod, t) * x_0 + \
-               self.schedule.get_data(self.schedule.sqrt_one_minus_alpha_cumprod, t) * noise, \
-               noise
-    
+class DDPM(DiffusionBase):
     @torch.no_grad()
     def p_sample(self, model, x_t, t, variance_type = "posterior"):
         mean_noise_coefficient = self.schedule.get_data(self.schedule.betas, t) / \
@@ -43,10 +32,3 @@ class DDPM:
             x = self.p_sample(model, x, timesteps, variance_type)
         
         return x
-    
-    def training_loss(self, model, x_0, t):
-        x_t, noise = self.q_sample(x_0, t)
-
-        prediction = model(x_t, t)
-
-        return F.mse_loss(prediction, noise)
