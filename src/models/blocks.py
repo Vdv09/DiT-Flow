@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -100,3 +101,89 @@ class SelfAttentionBlock(nn.Module):
         output = self.final_proj(output)
 
         return output + start_x
+
+
+class Downsample(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+
+        self.conv = nn.Conv2d(
+            in_channels = channels,
+            out_channels = channels,
+            kernel_size = 3,
+            padding = 1,
+            stride = 2,
+        )
+    
+    def forward(self, x):
+        return self.conv(x)
+
+
+class Upsample(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+
+        self.conv = nn.ConvTranspose2d(
+            in_channels = channels,
+            out_channels = channels,
+            kernel_size = 3,
+            stride = 2,
+            padding = 1,
+            output_padding = 1,
+        )
+    
+    def forward(self, x):
+        return self.conv(x)
+
+
+class DownBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, time_dim, need_attention = False):
+        super().__init__()
+
+        self.resblock1 = DiffusionResBlock(in_channels, out_channels, time_dim)
+
+        self.attention = SelfAttentionBlock(out_channels) if need_attention else None
+
+        self.resblock2 = DiffusionResBlock(out_channels, out_channels, time_dim)
+
+        self.downsample = Downsample(out_channels)
+    
+    def forward(self, x, time_embeddings):
+        x = self.resblock1(x, time_embeddings)
+
+        if self.attention is not None:
+            x = self.attention(x)
+        
+        x = self.resblock2(x, time_embeddings)
+
+        skip_x = x
+        x = self.downsample(x)
+
+        return x, skip_x
+
+
+class UpBlock(nn.Module):
+    def __init__(self, in_channels, skip_channels, out_channels, time_dim, need_attention = False):
+        super().__init__()
+
+        self.upsample = Upsample(in_channels)
+
+        self.resblock1 = DiffusionResBlock(in_channels + skip_channels, out_channels, time_dim)
+
+        self.attention = SelfAttentionBlock(out_channels) if need_attention else None
+
+        self.resblock2 = DiffusionResBlock(out_channels, out_channels, time_dim)
+    
+    def forward(self, x, skip_x, time_embeddings):
+        x = self.upsample(x)
+
+        x = torch.cat([x, skip_x], dim = 1)
+
+        x = self.resblock1(x, time_embeddings)
+
+        if self.attention is not None:
+            x = self.attention(x)
+
+        x = self.resblock2(x, time_embeddings)
+
+        return x
