@@ -50,3 +50,53 @@ class DiffusionResBlock(nn.Module):
         x = self.conv2(x)
 
         return x + self.skip_connection(start_x)
+
+
+class SelfAttentionBlock(nn.Module):
+    def __init__(self, channels, num_heads = 8):
+        super().__init__()
+
+        self.num_heads = num_heads
+
+        self.norm = nn.GroupNorm(num_groups = 32, num_channels = channels)
+
+        self.qkv = nn.Conv2d(
+            in_channels = channels, 
+            out_channels = channels * 3,
+            kernel_size = 1,
+        )
+
+        self.final_proj = nn.Conv2d(
+            in_channels = channels,
+            out_channels = channels,
+            kernel_size = 1,
+        )
+    
+    def forward(self, x):  # x: [B, C, H, W]
+        B, C, H, W = x.shape
+
+        start_x = x
+
+        x = self.norm(x)
+        qkv = self.qkv(x)
+
+        q, k, v = qkv.chunk(3, dim = 1)
+
+        head_dim = C // self.num_heads
+
+        def reshape(tensor):
+            return tensor.reshape(B, self.num_heads, head_dim, H * W).transpose(2, 3)
+        
+        q = reshape(q)
+        k = reshape(k)
+        v = reshape(v)
+
+        attn_weights = q @ k.transpose(-2, -1) * (head_dim ** -0.5)  # [B, self.num_heads, H*W, H*W]
+        attn_weights = attn_weights.softmax(dim = -1)
+
+        output = attn_weights @ v  # [B, self.num_heads, H*W, head_dim]
+
+        output = output.transpose(2, 3).reshape(B, C, H, W)
+        output = self.final_proj(output)
+
+        return output + start_x
