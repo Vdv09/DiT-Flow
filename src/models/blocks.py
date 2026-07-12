@@ -187,3 +187,19 @@ class UpBlock(nn.Module):
         x = self.resblock2(x, time_embeddings)
 
         return x
+
+
+class MiddleBlock(nn.Module):
+    def __init__(self, channels, time_dim):
+        super().__init__()
+
+        self.resblock1 = DiffusionResBlock(channels, channels, time_dim)
+        self.attention = SelfAttentionBlock(channels)
+        self.resblock2 = DiffusionResBlock(channels, channels, time_dim)
+    
+    def forward(self, x, time_embeddings):
+        x = self.resblock1(x, time_embeddings)
+        x = self.attention(x)
+        x = self.resblock2(x, time_embeddings)
+
+        return x
