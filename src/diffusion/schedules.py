@@ -1,5 +1,7 @@
 import torch
 
+from class_registry import class_registry
+
 
 class DiffusionSchedule:
     def __init__(self, betas):
@@ -62,3 +64,13 @@ class DiffusionSchedule:
     @property
     def number_steps(self):
         return len(self.betas)
+
+
+@class_registry.add_to_registry("linear")
+def build_linear(**kwargs):
+    return DiffusionSchedule.linear_schedule(**kwargs)
+
+
+@class_registry.add_to_registry("cosine")
+def build_cosine(**kwargs):
+    return DiffusionSchedule.cosine_schedule(**kwargs)

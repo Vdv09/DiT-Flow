@@ -12,7 +12,10 @@ class SinusoidalTimeEmbedding(nn.Module):
 
         half_dim = self.dim // 2
 
-        self.one_position = torch.exp(-math.log(self.period) * torch.arange(half_dim) / half_dim)
+        self.register_buffer(
+            "one_position",
+            torch.exp(-math.log(self.period) * torch.arange(half_dim) / half_dim)
+        )
 
     def forward(self, timesteps):
         inner_args = timesteps[:, None] * self.one_position[None, :]

@@ -1,8 +1,10 @@
 import torch.nn as nn
 from .blocks import DownBlock, MiddleBlock, UpBlock
 from .time_embeddings import SinusoidalTimeEmbedding, MLPTimeEmbedding
+from class_registry import class_registry
 
 
+@class_registry.add_to_registry("unet")
 class UNet(nn.Module):
     def __init__(
         self,

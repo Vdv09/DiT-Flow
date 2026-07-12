@@ -2,7 +2,10 @@ from .base import DiffusionBase
 
 import torch
 
+from class_registry import class_registry
 
+
+@class_registry.add_to_registry("ddim")
 class DDIM(DiffusionBase):
     def make_timesteps(self, number_steps):
         T = self.schedule.number_steps

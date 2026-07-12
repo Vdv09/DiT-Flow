@@ -1,0 +1,34 @@
+experiment:
+  name: ddpm_cifar10
+  device: mps
+
+data:
+  dataset: cifar10
+  batch_size: 16
+  num_workers: 0
+
+model:
+  type: unet
+  params:
+    in_channels: 3
+    start_channels: 32
+    num_blocks: 2
+    time_dim: 256
+    num_blocks_with_attention: 0
+
+diffusion:
+  method: ddpm
+  schedule: linear
+  number_steps: 1000
+
+train:
+  module_path: training.ddpm
+  epochs: 3
+  lr: 2.0e-4
+  weight_decay: 1.0e-4
+  sample_every: 1
+  output_dir: ./results/ddpm_cifar10
+
+sampling:
+  num_rows: 4
+  num_columns: 4

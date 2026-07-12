@@ -1,7 +1,10 @@
 from .base import DiffusionBase
 import torch
 
+from class_registry import class_registry
 
+
+@class_registry.add_to_registry("ddpm")
 class DDPM(DiffusionBase):
     @torch.no_grad()
     def p_sample(self, model, x_t, t, variance_type = "posterior"):
