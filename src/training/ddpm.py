@@ -73,7 +73,7 @@ class Trainer:
             train_results = self.train_one_epoch(epoch, num_epochs)
             print(f"Epoch {epoch + 1}/{num_epochs}: {train_results}")
 
-            if epoch % self.sample_every == 0:
+            if (epoch + 1) % self.sample_every == 0:
                 self.sample(epoch, self.num_rows, self.num_columns, self.output_dir)
 
 
