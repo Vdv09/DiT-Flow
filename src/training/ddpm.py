@@ -10,20 +10,27 @@ import os
 from torchvision.utils import save_image
 from tqdm import tqdm
 
+from utils.seed import set_seed
+from utils.EMA import EMA
+
 
 class Trainer:
-    def __init__(self, model, diffusion, optimizer, sample_every, num_rows, num_columns, output_dir, train_loader, device):
+    def __init__(self, model, diffusion, optimizer, sample_every, save_every, num_rows, num_columns, output_dir, train_loader, device, ema_beta):
         self.model = model
+        self.ema_model = EMA(model, ema_beta)
         self.diffusion = diffusion
         self.optimizer = optimizer
         self.sample_every = sample_every
+        self.save_every = save_every
         self.num_rows = num_rows
         self.num_columns = num_columns
         self.output_dir = output_dir
         self.train_loader = train_loader
         self.device = device
 
-        os.makedirs(output_dir, exist_ok = False)
+        os.makedirs(output_dir, exist_ok = True)
+        os.makedirs(os.path.join(output_dir, "images"), exist_ok = True)
+        os.makedirs(os.path.join(output_dir, "models"), exist_ok = True)
 
     def train_one_epoch(self, epoch, num_epochs):
         self.model.train()
@@ -45,6 +52,7 @@ class Trainer:
 
             loss.backward()
             self.optimizer.step()
+            self.ema_model.update(self.model)
         
         return {
             "MSE_loss": total_loss / total_samples,
@@ -55,7 +63,7 @@ class Trainer:
         self.model.eval()
 
         images = self.diffusion.sample(
-            self.model,
+            self.ema_model.ema_model,
             image_shape = (num_rows * num_columns, 3, 32, 32),
             device = self.device
         )
@@ -64,9 +72,28 @@ class Trainer:
 
         save_image(
             images,
-            os.path.join(output_dir, f"epoch_{epoch}.png"),
+            os.path.join(output_dir, "images", f"epoch_{epoch}.png"),
             nrow = num_rows
         )
+    
+    def load_checkpoint(self, checkpoint_path):
+        checkpoint = torch.load(checkpoint_path)
+        
+        self.model.load_state_dict(checkpoint["model"])
+        self.ema_model.load_state_dict(checkpoint["ema_model"])
+        self.optimizer.load_state_dict(checkpoint["optimizer"])
+
+        return checkpoint["epoch"]
+
+    def save_model(self, epoch):
+        os.makedirs(os.path.join(self.output_dir, "models"), exist_ok = True)
+
+        torch.save({
+            "epoch": epoch,
+            "model": self.model.state_dict(),
+            "ema_model": self.ema_model.state_dict(),
+            "optimizer": self.optimizer.state_dict()
+        }, os.path.join(self.output_dir, "models", f"epoch_{epoch}.pth"))
 
     def train(self, num_epochs):
         for epoch in range(num_epochs):
@@ -76,8 +103,13 @@ class Trainer:
             if (epoch + 1) % self.sample_every == 0:
                 self.sample(epoch, self.num_rows, self.num_columns, self.output_dir)
 
+            if (epoch + 1) % self.save_every == 0:
+                self.save_model(epoch)
+
 
 def main(config):
+    set_seed(config["experiment"]["seed"])
+
     model = class_registry.get_from_registry(config["model"]["type"], **config["model"]["params"])
     device = torch.device(config["experiment"]["device"])
     model.to(device)
@@ -96,11 +128,13 @@ def main(config):
     optimizer = torch.optim.AdamW(model.parameters(), lr = config["train"]["lr"], weight_decay = config["train"]["weight_decay"])
 
     sample_every = config["train"]["sample_every"]
+    save_every = config["train"]["save_every"]
     num_rows = config["sampling"]["num_rows"]
     num_columns = config["sampling"]["num_columns"]
     output_dir = config["train"]["output_dir"]
+    ema_beta = config["model"]["ema"]["beta"]
 
-    trainer = Trainer(model, diffusion, optimizer, sample_every, num_rows, num_columns, output_dir, train_loader, device)
+    trainer = Trainer(model, diffusion, optimizer, sample_every, save_every, num_rows, num_columns, output_dir, train_loader, device, ema_beta)
 
     trainer.train(config["train"]["epochs"])
     print("Training complete")

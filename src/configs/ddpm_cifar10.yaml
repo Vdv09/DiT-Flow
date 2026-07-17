@@ -1,20 +1,23 @@
 experiment:
   name: ddpm_cifar10
-  device: mps
+  device: cuda
+  seed: 42
 
 data:
   dataset: cifar10
-  batch_size: 16
-  num_workers: 0
+  batch_size: 256
+  num_workers: 4
 
 model:
   type: unet
   params:
     in_channels: 3
     start_channels: 32
-    num_blocks: 2
+    num_blocks: 4
     time_dim: 256
-    num_blocks_with_attention: 0
+    num_blocks_with_attention: 2
+  ema:
+    beta: 0.9999
 
 diffusion:
   method: ddpm
@@ -23,12 +26,13 @@ diffusion:
 
 train:
   module_path: training.ddpm
-  epochs: 3
+  epochs: 300
   lr: 2.0e-4
-  weight_decay: 1.0e-4
-  sample_every: 1
+  weight_decay: 0
+  sample_every: 20
+  save_every: 20
   output_dir: ./results/ddpm_cifar10
 
 sampling:
-  num_rows: 4
-  num_columns: 4
+  num_rows: 8
+  num_columns: 8

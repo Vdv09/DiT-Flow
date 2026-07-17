@@ -13,10 +13,13 @@ class DDIM(DiffusionBase):
         return torch.linspace(T - 1, 0, number_steps, dtype=torch.long)
     
     @torch.no_grad()
-    def ddim_step(self, model, x_t, t, prev_t):
+    def ddim_step(self, model, x_t, t, prev_t = None):
         eps = model(x_t, t)
 
         x_0 = self.predict_x0_from_eps(x_t, t, eps)
+        
+        if prev_t is None:
+            return x_0
 
         x_prev = self.schedule.get_data(self.schedule.sqrt_alpha_cumprod, prev_t) * x_0 + \
                  self.schedule.get_data(self.schedule.sqrt_one_minus_alpha_cumprod, prev_t) * eps
@@ -30,9 +33,13 @@ class DDIM(DiffusionBase):
         x = torch.randn(image_shape, device=device)
         batch_size = image_shape[0]
     
-        for i in range(number_steps - 1, -1, -1):
+        for i in range(number_steps):
             current_t = torch.full((batch_size,), timesteps[i], device=device, dtype=torch.long)
-            prev_t = torch.full((batch_size,), timesteps[i + 1], device=device, dtype=torch.long)
+            
+            if i + 1 < number_steps:
+                prev_t = torch.full((batch_size,), timesteps[i + 1], device=device, dtype=torch.long)
+            else:
+                prev_t = None
 
             x = self.ddim_step(model, x, current_t, prev_t)
 
