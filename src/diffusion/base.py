@@ -14,10 +14,10 @@ class DiffusionBase:
                self.schedule.get_data(self.schedule.sqrt_one_minus_alpha_cumprod, t) * noise, \
                noise
     
-    def training_loss(self, model, x_0, t):
+    def training_loss(self, model, x_0, t, y = None):
         x_t, noise = self.q_sample(x_0, t)
 
-        prediction = model(x_t, t)
+        prediction = model(x_t, t, y)
 
         return F.mse_loss(prediction, noise)
     

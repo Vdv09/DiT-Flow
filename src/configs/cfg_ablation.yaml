@@ -1,5 +1,5 @@
 experiment:
-  name: ddpm_cifar10
+  name: cfg_ablation
   device: cuda
   seed: 42
 
@@ -25,17 +25,8 @@ diffusion:
   schedule: cosine
   number_steps: 1000
 
-train:
-  module_path: training.ddpm
-  epochs: 1000
-  lr: 2.0e-4
-  weight_decay: 0
-  sample_every: 20
-  save_every: 20
-  output_dir: ./results/ddpm_cifar10_cfg
-  uncond_prob: 0.1
-
 sampling:
-  num_rows: 8
-  num_columns: 8
-  guidance_scale: 2
+  checkpoint: ./results/ddpm_cifar10_cfg/models/epoch_999.pth
+  scales: [0, 1, 2, 3, 5, 10]
+  per_class: 8
+  output_dir: ./results/cfg_ablation

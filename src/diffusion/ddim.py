@@ -3,7 +3,7 @@ from .base import DiffusionBase
 import torch
 
 from class_registry import class_registry
-
+from sampling.cfg import cfg_predict
 
 @class_registry.add_to_registry("ddim")
 class DDIM(DiffusionBase):
@@ -13,8 +13,17 @@ class DDIM(DiffusionBase):
         return torch.linspace(T - 1, 0, number_steps, dtype=torch.long)
     
     @torch.no_grad()
-    def ddim_step(self, model, x_t, t, prev_t = None):
-        eps = model(x_t, t)
+    def ddim_step(
+        self, 
+        model, 
+        x_t, 
+        t, 
+        prev_t = None,
+        y = None,
+        guidance_scale = 1,
+        null_class_label = None
+    ):
+        eps = cfg_predict(model, x_t, t, y, guidance_scale, null_class_label)
 
         x_0 = self.predict_x0_from_eps(x_t, t, eps)
         
@@ -27,7 +36,16 @@ class DDIM(DiffusionBase):
         return x_prev
     
     @torch.no_grad()
-    def sample(self, model, number_steps, image_shape, device):
+    def sample(
+        self, 
+        model, 
+        number_steps, 
+        image_shape, 
+        device, 
+        y = None, 
+        guidance_scale = 1, 
+        null_class_label = None
+    ):
         timesteps = self.make_timesteps(number_steps)
 
         x = torch.randn(image_shape, device=device)
@@ -41,6 +59,6 @@ class DDIM(DiffusionBase):
             else:
                 prev_t = None
 
-            x = self.ddim_step(model, x, current_t, prev_t)
+            x = self.ddim_step(model, x, current_t, prev_t, y, guidance_scale, null_class_label)
 
         return x

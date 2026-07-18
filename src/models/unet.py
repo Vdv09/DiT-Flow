@@ -11,15 +11,18 @@ class UNet(nn.Module):
         in_channels,
         start_channels,
         num_blocks,
-        time_dim,
+        embedding_dim,
+        num_classes,
         num_blocks_with_attention,
     ):
         super().__init__()
 
         self.get_time_embeddings = nn.Sequential(
-            SinusoidalTimeEmbedding(time_dim),
-            MLPTimeEmbedding(time_dim, output_dim = time_dim)
+            SinusoidalTimeEmbedding(embedding_dim),
+            MLPTimeEmbedding(embedding_dim, output_dim = embedding_dim)
         )
+        
+        self.class_embedding = nn.Embedding(num_classes + 1, embedding_dim)
 
         self.first_conv = nn.Conv2d(
             in_channels = in_channels,
@@ -32,7 +35,7 @@ class UNet(nn.Module):
             DownBlock(
                 in_channels = start_channels * 2 ** i,
                 out_channels = start_channels * 2 ** (i + 1),
-                time_dim = time_dim,
+                time_dim = embedding_dim,
                 need_attention = (i >= num_blocks - num_blocks_with_attention)
             )
 
@@ -41,7 +44,7 @@ class UNet(nn.Module):
 
         self.middle_block = MiddleBlock(
             channels = start_channels * 2 ** num_blocks,
-            time_dim = time_dim
+            time_dim = embedding_dim
         )
 
         self.up_blocks = nn.ModuleList([
@@ -49,7 +52,7 @@ class UNet(nn.Module):
                 in_channels = start_channels * 2 ** (num_blocks - i),
                 skip_channels = start_channels * 2 ** (num_blocks - i),
                 out_channels = start_channels * 2 ** (num_blocks - i - 1),
-                time_dim = time_dim,
+                time_dim = embedding_dim,
                 need_attention = (i >= num_blocks - num_blocks_with_attention)
             )
             for i in range(num_blocks)
@@ -62,8 +65,12 @@ class UNet(nn.Module):
             padding = 1
         )
     
-    def forward(self, x, t):
+    def forward(self, x, t, y = None):
         time_embeddings = self.get_time_embeddings(t)
+        
+        if y is not None:
+            class_embedding = self.class_embedding(y)
+            time_embeddings = time_embeddings + class_embedding
 
         x = self.first_conv(x)
 

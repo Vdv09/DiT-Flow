@@ -15,7 +15,23 @@ from utils.EMA import EMA
 
 
 class Trainer:
-    def __init__(self, model, diffusion, optimizer, sample_every, save_every, num_rows, num_columns, output_dir, train_loader, device, ema_beta):
+    def __init__(
+        self, 
+        model, 
+        diffusion, 
+        optimizer, 
+        sample_every, 
+        save_every, 
+        num_rows, 
+        num_columns, 
+        output_dir, 
+        train_loader, 
+        device, 
+        ema_beta, 
+        num_classes,
+        uncond_prob = 0.1,
+        guidance_scale = 10
+    ):
         self.model = model
         self.ema_model = EMA(model, ema_beta)
         self.diffusion = diffusion
@@ -27,6 +43,9 @@ class Trainer:
         self.output_dir = output_dir
         self.train_loader = train_loader
         self.device = device
+        self.num_classes = num_classes
+        self.uncond_prob = uncond_prob
+        self.guidance_scale = guidance_scale
 
         os.makedirs(output_dir, exist_ok = True)
         os.makedirs(os.path.join(output_dir, "images"), exist_ok = True)
@@ -37,15 +56,19 @@ class Trainer:
         total_loss = 0
         total_samples = 0
 
-        for x, _ in tqdm(self.train_loader, desc = f"Training Epoch {epoch + 1}/{num_epochs}"):
+        for x, y in tqdm(self.train_loader, desc = f"Training Epoch {epoch + 1}/{num_epochs}"):
             x = x.to(self.device)
+            y = y.to(self.device)
 
             batch_size = x.shape[0]
             timesteps = torch.randint(0, self.diffusion.schedule.number_steps, (batch_size,), device = self.device, dtype = torch.long)
 
             self.optimizer.zero_grad()
+            
+            drop_indices = torch.rand((batch_size,), device = self.device) < self.uncond_prob
+            y[drop_indices] = self.num_classes
 
-            loss = self.diffusion.training_loss(self.model, x, timesteps)
+            loss = self.diffusion.training_loss(self.model, x, timesteps, y)
 
             total_loss += loss.item() * batch_size
             total_samples += batch_size
@@ -59,13 +82,18 @@ class Trainer:
         }
     
     @torch.no_grad()
-    def sample(self, epoch, num_rows, num_columns, output_dir):
+    def sample(self, epoch, num_columns, output_dir):
         self.model.eval()
+
+        classes = torch.arange(self.num_classes, device = self.device).repeat_interleave(num_columns)
 
         images = self.diffusion.sample(
             self.ema_model.ema_model,
-            image_shape = (num_rows * num_columns, 3, 32, 32),
-            device = self.device
+            image_shape = (self.num_classes * num_columns, 3, 32, 32),
+            device = self.device,
+            y = classes,
+            guidance_scale = self.guidance_scale,
+            null_class_label = self.num_classes
         )
 
         images = (images.clamp(-1, 1) + 1) / 2
@@ -73,7 +101,7 @@ class Trainer:
         save_image(
             images,
             os.path.join(output_dir, "images", f"epoch_{epoch}.png"),
-            nrow = num_rows
+            nrow = num_columns,
         )
     
     def load_checkpoint(self, checkpoint_path):
@@ -101,7 +129,7 @@ class Trainer:
             print(f"Epoch {epoch + 1}/{num_epochs}: {train_results}")
 
             if (epoch + 1) % self.sample_every == 0:
-                self.sample(epoch, self.num_rows, self.num_columns, self.output_dir)
+                self.sample(epoch, self.num_columns, self.output_dir)
 
             if (epoch + 1) % self.save_every == 0:
                 self.save_model(epoch)
@@ -133,8 +161,11 @@ def main(config):
     num_columns = config["sampling"]["num_columns"]
     output_dir = config["train"]["output_dir"]
     ema_beta = config["model"]["ema"]["beta"]
+    num_classes = config["model"]["params"]["num_classes"]
+    uncond_prob = config["train"]["uncond_prob"]
+    guidance_scale = config["sampling"]["guidance_scale"]
 
-    trainer = Trainer(model, diffusion, optimizer, sample_every, save_every, num_rows, num_columns, output_dir, train_loader, device, ema_beta)
+    trainer = Trainer(model, diffusion, optimizer, sample_every, save_every, num_rows, num_columns, output_dir, train_loader, device, ema_beta, num_classes, uncond_prob, guidance_scale)
 
     trainer.train(config["train"]["epochs"])
     print("Training complete")
