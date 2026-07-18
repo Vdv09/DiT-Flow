@@ -1,6 +1,7 @@
 from .base import DiffusionBase
 import torch
 from sampling.cfg import cfg_predict
+from sampling.thresholding import apply_threshold
 
 from class_registry import class_registry
 
@@ -16,15 +17,17 @@ class DDPM(DiffusionBase):
         y,
         guidance_scale = 1,
         null_class_label = None,
-        variance_type = "posterior"
+        variance_type = "posterior",
+        threshold = "none",
+        threshold_quantile = 0.995
     ):
         model_prediction = cfg_predict(model, x_t, t, y, guidance_scale, null_class_label)
 
-        mean_noise_coefficient = self.schedule.get_data(self.schedule.betas, t) / \
-                                 self.schedule.get_data(self.schedule.sqrt_one_minus_alpha_cumprod, t)
+        x_0 = self.predict_x0_from_eps(x_t, t, model_prediction)
+        x_0 = apply_threshold(x_0, threshold, threshold_quantile)
 
-        mean_val = self.schedule.get_data(self.schedule.sqrt_inverse_alphas, t) * \
-                   (x_t - mean_noise_coefficient * model_prediction)
+        mean_val = self.schedule.get_data(self.schedule.posterior_coef_x0, t) * x_0 + \
+                   self.schedule.get_data(self.schedule.posterior_coef_xt, t) * x_t
         
         if variance_type == "initial_beta":
             variance = self.schedule.get_data(self.schedule.betas, t)
@@ -46,7 +49,9 @@ class DDPM(DiffusionBase):
         y, 
         guidance_scale = 1, 
         null_class_label = None, 
-        variance_type = "posterior"
+        variance_type = "posterior",
+        threshold = "none",
+        threshold_quantile = 0.995
     ):
         x = torch.randn(image_shape, device=device)
         number_steps = self.schedule.number_steps
@@ -60,7 +65,9 @@ class DDPM(DiffusionBase):
                 y, 
                 guidance_scale, 
                 null_class_label, 
-                variance_type
+                variance_type,
+                threshold,
+                threshold_quantile
             )
-        
+
         return x

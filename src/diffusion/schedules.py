@@ -19,6 +19,9 @@ class DiffusionSchedule:
         self.sqrt_inverse_alphas = torch.sqrt(1 / self.alphas)
 
         self.posterior_variances = (1 - self.alpha_cumprod_prev) / (1 - self.alpha_cumprod) * self.betas
+        
+        self.posterior_coef_x0 = self.betas * torch.sqrt(self.alpha_cumprod_prev) / (1 - self.alpha_cumprod)
+        self.posterior_coef_xt = torch.sqrt(self.alphas) * (1 - self.alpha_cumprod_prev) / (1 - self.alpha_cumprod)
 
         self._buffer_names = [
             'betas',
@@ -30,6 +33,8 @@ class DiffusionSchedule:
             'alpha_cumprod_prev',
             'sqrt_inverse_alphas',
             'posterior_variances',
+            'posterior_coef_x0',
+            'posterior_coef_xt'
         ]
     
     @classmethod

@@ -4,6 +4,8 @@ import torch
 
 from class_registry import class_registry
 from sampling.cfg import cfg_predict
+from sampling.thresholding import apply_threshold
+
 
 @class_registry.add_to_registry("ddim")
 class DDIM(DiffusionBase):
@@ -21,11 +23,14 @@ class DDIM(DiffusionBase):
         prev_t = None,
         y = None,
         guidance_scale = 1,
-        null_class_label = None
+        null_class_label = None,
+        threshold = "none",
+        threshold_quantile = 0.995
     ):
         eps = cfg_predict(model, x_t, t, y, guidance_scale, null_class_label)
 
         x_0 = self.predict_x0_from_eps(x_t, t, eps)
+        x_0 = apply_threshold(x_0, threshold, threshold_quantile)
         
         if prev_t is None:
             return x_0
@@ -44,7 +49,9 @@ class DDIM(DiffusionBase):
         device, 
         y = None, 
         guidance_scale = 1, 
-        null_class_label = None
+        null_class_label = None,
+        threshold = "none",
+        threshold_quantile = 0.995
     ):
         timesteps = self.make_timesteps(number_steps)
 
@@ -59,6 +66,6 @@ class DDIM(DiffusionBase):
             else:
                 prev_t = None
 
-            x = self.ddim_step(model, x, current_t, prev_t, y, guidance_scale, null_class_label)
+            x = self.ddim_step(model, x, current_t, prev_t, y, guidance_scale, null_class_label, threshold, threshold_quantile)
 
         return x

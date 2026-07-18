@@ -52,6 +52,12 @@ def main():
     classes = torch.arange(num_classes, device=device).repeat_interleave(config["sampling"]["per_class"])
 
     Path(config["sampling"]["output_dir"]).mkdir(exist_ok=True)
+    
+    threshold_quantile = 0.995
+    threshold = config["sampling"]["threshold"]
+    
+    if threshold == "dynamic":
+        threshold_quantile = config["sampling"]["threshold_quantile"]
 
     for scale in config["sampling"]["scales"]:
         set_seed(config["experiment"]["seed"])
@@ -62,7 +68,9 @@ def main():
             device=device,
             y=classes,
             guidance_scale=scale,
-            null_class_label=num_classes
+            null_class_label=num_classes,
+            threshold = threshold,
+            threshold_quantile = threshold_quantile
         )
 
         images = (images.clamp(-1, 1) + 1) / 2

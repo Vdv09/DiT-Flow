@@ -1,5 +1,5 @@
 experiment:
-  name: cfg_ablation
+  name: cfg_ablation_threshold
   device: cuda
   seed: 42
 
@@ -29,4 +29,6 @@ sampling:
   checkpoint: ./results/ddpm_cifar10_cfg/models/epoch_999.pth
   scales: [0, 1, 2, 3, 5, 10]
   per_class: 8
+  threshold: dynamic
+  threshold_quantile: 0.995
   output_dir: ./results/cfg_ablation
