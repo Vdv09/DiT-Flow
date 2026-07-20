@@ -1,0 +1,52 @@
+experiment:
+  name: ldm_cifar10
+  device: cuda
+  seed: 42
+
+data:
+  dataset: cifar10
+  batch_size: 512
+  num_workers: 4
+
+model:
+  type: unet
+  params:
+    in_channels: 4
+    start_channels: 32
+    num_blocks: 3
+    embedding_dim: 256
+    num_classes: 10
+    num_blocks_with_attention: 2
+  ema:
+    beta: 0.995
+  
+vae:
+  checkpoint: ./results/vae_cifar10/models/epoch_99.pth
+  params:
+    in_channels: 3
+    base_channels: 64
+    channels_multiplier: [1, 2]
+    latent_channels: 4
+  scale_factor: 1.3380716480010055
+
+diffusion:
+  method: ddpm
+  schedule: cosine
+  number_steps: 1000
+
+train:
+  module_path: training.ldm
+  epochs: 1000
+  lr: 2.0e-4
+  weight_decay: 0
+  sample_every: 20
+  save_every: 20
+  output_dir: ./results/ldm_cifar10
+  uncond_prob: 0.1
+
+sampling:
+  num_columns: 8
+  num_rows: 8
+  guidance_scale: 2
+  threshold: none
+  threshold_quantile: 0.995

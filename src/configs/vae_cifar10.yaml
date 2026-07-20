@@ -26,3 +26,6 @@ train:
   save_every: 10
   num_samples_to_check: 32
   output_dir: ./results/vae_cifar10
+
+sampling:
+  checkpoint: ./results/vae_cifar10/models/epoch_99.pth
