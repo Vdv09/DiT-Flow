@@ -1,5 +1,5 @@
 import torch.nn as nn
-from .blocks import DownBlock, MiddleBlock, UpBlock
+from .unet_blocks import DownBlock, MiddleBlock, UpBlock
 from .time_embeddings import SinusoidalTimeEmbedding, MLPTimeEmbedding
 from class_registry import class_registry
 

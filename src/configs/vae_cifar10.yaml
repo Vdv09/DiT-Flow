@@ -1,0 +1,28 @@
+experiment:
+  name: vae_cifar10
+  device: cuda
+  seed: 42
+
+data:
+  dataset: cifar10
+  batch_size: 256
+  num_workers: 4
+
+model:
+  type: vae
+  params:
+    in_channels: 3
+    base_channels: 64
+    channels_multiplier: [1, 2]
+    latent_channels: 4
+
+train:
+  module_path: training.autoencoder
+  epochs: 100
+  lr: 1.0e-4
+  weight_decay: 0
+  kl_weight: 1.0e-6
+  sample_every: 5
+  save_every: 10
+  num_samples_to_check: 32
+  output_dir: ./results/vae_cifar10

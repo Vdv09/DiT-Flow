@@ -1,0 +1,33 @@
+experiment:
+  device: cuda
+  seed: 42
+
+data:
+  dataset: cifar10
+  batch_size: 256
+  num_workers: 4
+
+model:
+  type: unet
+  params:
+    in_channels: 3
+    start_channels: 32
+    num_blocks: 4
+    embedding_dim: 256
+    num_classes: 10
+    num_blocks_with_attention: 2
+
+diffusion:
+  method: ddim
+  schedule: cosine
+  number_steps: 1000
+
+eval:
+  checkpoint: ./results/ddpm_cifar10_cfg/models/epoch_999.pth
+  scales: [0, 1, 2, 3, 5, 10]
+  sampling_steps: 50
+  num_samples: 50000
+  sample_batch: 256
+  threshold: dynamic
+  threshold_quantile: 0.995
+  output_dir: ./results/eval_ddim_cifar10

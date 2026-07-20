@@ -82,14 +82,14 @@ class Trainer:
         }
     
     @torch.no_grad()
-    def sample(self, epoch, num_columns, output_dir):
+    def sample(self, epoch):
         self.model.eval()
 
         classes = torch.arange(self.num_classes, device = self.device).repeat_interleave(num_columns)
 
         images = self.diffusion.sample(
             self.ema_model.ema_model,
-            image_shape = (self.num_classes * num_columns, 3, 32, 32),
+            image_shape = (self.num_classes * self.num_columns, 3, 32, 32),
             device = self.device,
             y = classes,
             guidance_scale = self.guidance_scale,
@@ -100,8 +100,8 @@ class Trainer:
 
         save_image(
             images,
-            os.path.join(output_dir, "images", f"epoch_{epoch}.png"),
-            nrow = num_columns,
+            os.path.join(self.output_dir, "images", f"epoch_{epoch}.png"),
+            nrow = self.num_columns,
         )
     
     def load_checkpoint(self, checkpoint_path):
@@ -129,7 +129,7 @@ class Trainer:
             print(f"Epoch {epoch + 1}/{num_epochs}: {train_results}")
 
             if (epoch + 1) % self.sample_every == 0:
-                self.sample(epoch, self.num_columns, self.output_dir)
+                self.sample(epoch)
 
             if (epoch + 1) % self.save_every == 0:
                 self.save_model(epoch)
